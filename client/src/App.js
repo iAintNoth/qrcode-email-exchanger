@@ -1,24 +1,32 @@
-import logo from './logo.svg';
-import './App.css';
+// src/App.js
+
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import LoginForm from './components/LoginForm';
+import RequestEmailForm from './components/RequestEmailForm';
 
 function App() {
+  const [token, setToken] = useState('');
+  const [username, setUsername] = useState('');
+
+  const handleLogin = (newToken, newUsername) => {
+    setToken(newToken);
+    setUsername(newUsername);
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <Routes>
+        <Route
+          path="/"
+          element={token ? <Navigate to="/request-email" /> : <LoginForm onLogin={handleLogin} />}
+        />
+        <Route
+          path="/request-email"
+          element={!token ? <Navigate to="/" /> : <RequestEmailForm token={token} />}
+        />
+      </Routes>
+    </Router>
   );
 }
 
