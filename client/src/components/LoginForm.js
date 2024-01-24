@@ -16,19 +16,20 @@ const LoginForm = ({ onLogin }) => {
       console.error('Login failed:', error);
     }
   };
-  
 
   return (
-    <div>
-      <label>
+    <div className="flex flex-col items-center">
+      <label className="mb-2">
         Username:
-        <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} />
+        <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="border p-1" />
       </label>
-      <label>
+      <label className="mb-2">
         Password:
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="border p-1" />
       </label>
-      <button onClick={handleLogin}>Login</button>
+      <button onClick={handleLogin} className="bg-blue-500 text-white p-2 rounded">
+        Login
+      </button>
     </div>
   );
 };

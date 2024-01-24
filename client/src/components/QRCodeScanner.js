@@ -1,3 +1,5 @@
+// QRCodeScanner.js
+
 import React, { useState } from 'react';
 import axios from 'axios';
 
@@ -30,21 +32,26 @@ const QRCodeScanner = ({ token }) => {
   };
 
   return (
-    <div>
-      <div>
+    <div className="qr-code-scanner-container">
+      <div className="input-container">
         <label>
           Searched User ID:
           <input
             type="text"
             value={searchedUserId}
             onChange={(e) => setSearchedUserId(e.target.value)}
+            className="p-2 border border-gray-300"
           />
         </label>
-        <button onClick={handleSearch}>Search Email</button>
+      </div>
+      <div className="button-container">
+        <button onClick={handleSearch} className="bg-blue-500 text-white px-4 py-2 rounded">
+          Search Email
+        </button>
       </div>
       {searchedUserEmail && (
-        <div>
-          <p>{`Email found: ${searchedUserEmail}`}</p>
+        <div className="email-container mt-4">
+          <p className="text-green-700">{`Email found: ${searchedUserEmail}`}</p>
         </div>
       )}
     </div>

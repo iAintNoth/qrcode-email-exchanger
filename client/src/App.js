@@ -1,5 +1,6 @@
+// Example component using React and Tailwind CSS
+
 import React, { useState, useEffect } from 'react';
-import io from 'socket.io-client';
 import LoginForm from './components/LoginForm';
 import QRCodeScanner from './components/QRCodeScanner';
 import Notification from './components/Notification';
@@ -28,16 +29,23 @@ const App = () => {
   };
 
   return (
-    <div>
-      {token ? (
-        <>
-          <button onClick={handleLogout}>Logout</button>
-          <QRCodeScanner token={token} />
-          <Notification token={token} />
-        </>
-      ) : (
-        <LoginForm onLogin={handleLogin} />
-      )}
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="bg-white p-8 rounded shadow-md">
+        {token ? (
+          <>
+            <button
+              className="mb-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+            <QRCodeScanner token={token} />
+            <Notification token={token} />
+          </>
+        ) : (
+          <LoginForm onLogin={handleLogin} />
+        )}
+      </div>
     </div>
   );
 };
