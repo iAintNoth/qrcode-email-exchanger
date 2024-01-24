@@ -1,33 +1,27 @@
-// server.js
-
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
+const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
+const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/eventApp';
 
+// Configurazione del middleware CORS per Express
 app.use(cors());
-app.use(express.json());
 
-mongoose.connect(MONGODB_URI, {
+const PORT = process.env.PORT || 3001;
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/qrCodeExchange';
+
+mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
 
-const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'MongoDB connection error:'));
-db.once('open', () => console.log('Connected to MongoDB'));
+app.use(bodyParser.json());
 
-let secretKey = crypto.randomBytes(64).toString('hex');
-app.set('secretKey', secretKey);
-
+// Schema utente su MongoDB
 const userSchema = new mongoose.Schema({
-  id: String,
   username: String,
   email: String,
   password: String,
@@ -35,48 +29,112 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-app.post('/api/login', async (req, res) => {
+const Login = async (req, res, next) => {
+  const token = req.header('Authorization');
+
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   try {
-    const { username, password } = req.body;
+    // Verifica del token JWT
+    const decoded = jwt.verify(token.replace('Bearer ', ''), 'secret-key');
+    const user = await User.findById(decoded.userId);
+
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error('Authentication error:', error);
+    res.status(401).json({ error: 'Unauthorized' });
+  }
+};
+
+// Aggiungi l'endpoint per il login
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+
+  try {
+    // Trova l'utente in MongoDB in base a username e password
     const user = await User.findOne({ username, password });
 
     if (!user) {
-      res.status(401).json({ error: 'Authentication failed' });
-    } else {
-      const token = jwt.sign({ id: user.id, username: user.username }, secretKey, { expiresIn: '1h' });
-      res.status(200).json({ token, username: user.username });
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
+
+    // Genera il token JWT
+    const token = jwt.sign({ userId: user._id }, 'secret-key');
+
+    res.json({ token });
   } catch (error) {
-    console.error(error);
+    console.error('Login failed:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-app.get('/api/get-email/:username', async (req, res) => {
-    try {
-      const { username } = req.params;
-      const token = req.headers.authorization.split(' ')[1];
-      const decodedToken = jwt.verify(token, secretKey);
-      const user = await User.findOne({ username });
-  
-      if (!user) {
-        res.status(404).json({ error: 'User not found' });
-      } else {
-        res.status(200).json({ email: user.email });
-      }
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Internal Server Error' });
-    }
-  });
 
-setInterval(() => {
-  const newSecretKey = crypto.randomBytes(64).toString('hex');
-  app.set('secretKey', newSecretKey);
-  console.log('Secret key rotated:', newSecretKey);
-  secretKey = newSecretKey;
-}, 30 * 60 * 1000);
+// Aggiungi una variabile globale per archiviare gli ultimi messaggi
+const lastMessages = {};
+
+// API endpoint per lo scambio di QR code
+app.get('/exchange', Login, async (req, res) => {
+  const { userId, searchedUserId } = req.query;
+
+  console.log('Received userId:', userId);
+  console.log('Received searchedUserId:', searchedUserId);
+
+  try {
+    const searchedUser = await User.findById(searchedUserId);
+
+    if (!searchedUser) {
+      return res.status(404).json({ error: 'Utente cercato non trovato' });
+    }
+
+    // Aggiorna l'ultimo messaggio per l'utente cercato
+    lastMessages[searchedUserId] = {
+      username: req.user.username,
+      email: req.user.email,
+    };
+
+    res.json({ email: searchedUser.email });
+  } catch (error) {
+    console.error('Errore nella ricerca dell\'utente:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.get('/last-message', Login, async (req, res) => {
+  const { userId } = req.query;
+
+  try {
+    // Trova l'utente utilizzando il token JWT
+    const decoded = jwt.verify(userId.replace('Bearer ', ''), 'secret-key');
+    const user = await User.findById(decoded.userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+
+    // Restituisci l'ultimo messaggio per l'utente
+    const lastMessage = lastMessages[decoded.userId] || null;
+
+    // Ottieni l'username e l'email dell'utente cercato
+    const searchedUserData = {
+      username: user.username,
+      email: user.email,
+    };
+
+    res.json({ lastMessage, searchedUserData });
+  } catch (error) {
+    console.error('Errore durante il recupero dell\'ultimo messaggio:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Il server è in esecuzione sulla porta ${PORT}`);
 });
